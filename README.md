@@ -1,6 +1,8 @@
 # brain-GNN-project
 
 ## sparsification  
+
+# Disparity Filtering
 code source : http://www.michelecoscia.com/?page_id=287  
 
 paper : Serrano, M.A., Boguna, M., Vespignani, A.: Extracting the multiscale backbone of complex
