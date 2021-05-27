@@ -1,5 +1,0 @@
-batch_size: 32
-hidden_channels: 64
-lr: 0.001
-num_classes: 2
-weight_decay: 5.0e-06
