@@ -362,7 +362,7 @@ class SAGPool(torch.nn.Module):
             xs += [global_mean_pool(x, batch)]
             if i % 2 == 0 and i < len(self.convs) - 1:
                 pool = self.pools[i // 2]
-                x, edge_index, _, batch, _, _ = pool(x, edge_index,batch=batch)
+                x, edge_index, _, batch, perm, score = pool(x, edge_index,batch=batch)
                 #x, edge_index, edge_attr, batch, perm, score =  pool(x, edge_index,edge_attr = edge_attr, batch=batch)
                 
                 ps.append(perm)
@@ -375,7 +375,55 @@ class SAGPool(torch.nn.Module):
         #return F.log_softmax(x, dim=-1)
         return ps, ss
 
+class SAGPool_g(torch.nn.Module):
+    def __init__(self, num_layers, hidden, num_node_features, num_classes, ratio=0.8):
+        super(SAGPool, self).__init__()
+        self.conv1 = GraphConv(num_node_features, hidden, aggr='mean')
+        #self.conv1 = GCNConv(num_node_features, hidden, add_self_loops=False)
+        
+        self.convs = torch.nn.ModuleList()
+        self.pools = torch.nn.ModuleList()
+        self.convs.extend([
+            GraphConv(hidden, hidden, aggr='mean')
+            #GCNConv(hidden, hidden, add_self_loops=False)
+            
+            for i in range(num_layers - 1)
+        ])
+        self.pools.extend(
+            [SAGPooling(hidden, ratio) for i in range((num_layers-1) // 2)])
+        self.jump = JumpingKnowledge(mode='cat')
+        self.lin1 = Linear(num_layers * hidden, hidden)
+        self.lin2 = Linear(hidden, num_classes)
 
+    def reset_parameters(self):
+        self.conv1.reset_parameters()
+        for conv in self.convs:
+            conv.reset_parameters()
+        for pool in self.pools:
+            pool.reset_parameters()
+        self.lin1.reset_parameters()
+        self.lin2.reset_parameters()
+
+    def forward(self, data):
+        x, edge_index, edge_attr, batch = data.x, data.edge_index, data.edge_attr, data.batch
+        x = F.relu(self.conv1(x=x, edge_index = edge_index))
+        #x = F.relu(self.conv1(x=x, edge_index = edge_index, edge_weight = edge_attr))
+        
+        xs = [global_mean_pool(x, batch)]
+        for i, conv in enumerate(self.convs):
+            x = F.relu(conv(x=x, edge_index = edge_index))
+            #x = F.relu(conv(x=x, edge_index = edge_index, edge_weight = edge_attr))
+            xs += [global_mean_pool(x, batch)]
+            if i % 2 == 0 and i < len(self.convs) - 1:
+                pool = self.pools[i // 2]
+                x, edge_index, _, batch, _, _ = pool(x, edge_index,batch=batch)
+                #x, edge_index, edge_attr, batch, _, _ = pool(x, edge_index,edge_attr = edge_attr,batch=batch)
+                
+        x = self.jump(xs)
+        x = F.relu(self.lin1(x))
+        x = F.dropout(x, p=0.5, training=self.training)
+        x = self.lin2(x)
+        return F.log_softmax(x, dim=-1)
     
 class TimeDiffClassifier_sagpooling(pl.LightningModule):
     def __init__(self, hparams):
@@ -571,7 +619,7 @@ class TimeDiffClassifier_sagpooling(pl.LightningModule):
 
 
         train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(datalist,
-                                                                                [int(N*0.8), int(N*0.1), N-int(N*0.8)-int(N*0.1)])
+                                                                                [int(N*0.6), int(N*0.2), N-int(N*0.6)-int(N*0.2)])
         self.dataset = {}
         self.dataset['train'],  self.dataset['val'],  self.dataset['test'] = train_dataset, val_dataset, test_dataset
         print(f'Number of training graphs: {len(train_dataset)}')
