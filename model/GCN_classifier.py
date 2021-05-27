@@ -378,20 +378,22 @@ class SAGPool(torch.nn.Module):
 class SAGPool_g(torch.nn.Module):
     def __init__(self, num_layers, hidden, num_node_features, num_classes, ratio=0.8):
         super(SAGPool, self).__init__()
-        self.conv1 = GraphConv(num_node_features, hidden, aggr='mean')
-        #self.conv1 = GCNConv(num_node_features, hidden, add_self_loops=False)
+        #self.conv1 = GraphConv(num_node_features, hidden, aggr='mean')
+        self.conv1 = GCNConv(num_node_features, hidden, add_self_loops=False)
         
         self.convs = torch.nn.ModuleList()
-        self.pools = torch.nn.ModuleList()
+        #self.pools = torch.nn.ModuleList()
         self.convs.extend([
-            GraphConv(hidden, hidden, aggr='mean')
-            #GCNConv(hidden, hidden, add_self_loops=False)
+            #GraphConv(hidden, hidden, aggr='mean')
+            GCNConv(hidden, hidden, add_self_loops=False)
             
             for i in range(num_layers - 1)
         ])
-        self.pools.extend(
-            [SAGPooling(hidden, ratio) for i in range((num_layers-1) // 2)])
-        self.jump = JumpingKnowledge(mode='cat')
+        #self.pools.extend([SAGPooling(hidden, ratio) for i in range((num_layers-1) // 2)])
+        #self.jump = JumpingKnowledge(mode='cat')
+        
+        
+        
         self.lin1 = Linear(num_layers * hidden, hidden)
         self.lin2 = Linear(hidden, num_classes)
 
@@ -406,6 +408,27 @@ class SAGPool_g(torch.nn.Module):
 
     def forward(self, data):
         x, edge_index, edge_attr, batch = data.x, data.edge_index, data.edge_attr, data.batch
+        '''
+        # 1. Obtain node embeddings
+        x = self.conv1(x, edge_index, edge_attr)
+        x = x.relu()
+        x = self.conv2(x, edge_index, edge_attr)
+        x = x.relu()
+        x = self.conv3(x, edge_index, edge_attr)
+
+        # 2. Readout layer
+        # x = global_mean_pool(x, batch)  # [batch_size, hidden_channels]
+        x = self.att(x, batch)
+        
+        x = self.lin1(x)
+        x = x.relu()
+
+        # 3. Apply a final classifier
+        x = F.dropout(x, p=0.5, training=self.training)
+        x = self.lin2(x)
+
+        '''
+        
         x = F.relu(self.conv1(x=x, edge_index = edge_index))
         #x = F.relu(self.conv1(x=x, edge_index = edge_index, edge_weight = edge_attr))
         
@@ -619,7 +642,7 @@ class TimeDiffClassifier_sagpooling(pl.LightningModule):
 
 
         train_dataset, val_dataset, test_dataset = torch.utils.data.random_split(datalist,
-                                                                                [int(N*0.6), int(N*0.2), N-int(N*0.6)-int(N*0.2)])
+                                                                                [int(N*self.hparams['split_train']), int(N*self.hparams['split_val']), N-int(N*self.hparams['split_train'])-int(N*self.hparams['split_val'])])
         self.dataset = {}
         self.dataset['train'],  self.dataset['val'],  self.dataset['test'] = train_dataset, val_dataset, test_dataset
         print(f'Number of training graphs: {len(train_dataset)}')
