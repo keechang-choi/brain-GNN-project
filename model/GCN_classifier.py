@@ -356,7 +356,7 @@ class SAGPool(torch.nn.Module):
             if i % 2 == 0 and i < len(self.convs) - 1:
                 pool = self.pools[i // 2]
                 #x, edge_index, edge_attr, batch, perm, score =  pool(x, edge_index,edge_attr = edge_attr, batch=batch)
-                x, edge_index _, batch, _, _ = pool(x, edge_index,batch=batch)
+                x, edge_index, _, batch, _, _ = pool(x, edge_index,batch=batch)
                 ps.append(perm)
                 ss.append(score)
                 
