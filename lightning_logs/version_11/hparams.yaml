@@ -1,0 +1,12 @@
+batch_size: 32
+hidden_channels: 64
+lr: 0.0005
+num_classes: 2
+num_layers: 7
+num_node_features: 149
+ratio: 0.5
+s_data: .\data_diff
+s_date: .\data\[UNC]ADNI-network\dataTS.csv
+s_node: .\data\DT_File_MAP.xlsx
+s_sparsified: .\sparsification\data\
+weight_decay: 1.0e-06
