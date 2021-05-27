@@ -347,6 +347,7 @@ class SAGPool(torch.nn.Module):
         x = F.relu(self.lin1(x))
         x = F.dropout(x, p=0.5, training=self.training)
         x = self.lin2(x)
+        #print(x.shape)
         return F.log_softmax(x, dim=-1)
     def get_att(self, data):
         x, edge_index, edge_attr, batch = data.x, data.edge_index, data.edge_attr, data.batch
@@ -377,7 +378,7 @@ class SAGPool(torch.nn.Module):
 
 class SAGPool_g(torch.nn.Module):
     def __init__(self, num_layers, hidden, num_node_features, num_classes, ratio=0.8):
-        super(SAGPool, self).__init__()
+        super(SAGPool_g, self).__init__()
         #self.conv1 = GraphConv(num_node_features, hidden, aggr='mean')
         self.conv1 = GCNConv(num_node_features, hidden, add_self_loops=False)
         
@@ -389,6 +390,9 @@ class SAGPool_g(torch.nn.Module):
             
             for i in range(num_layers - 1)
         ])
+        self.pool = SAGPooling(hidden*(num_layers), ratio)
+       
+        
         #self.pools.extend([SAGPooling(hidden, ratio) for i in range((num_layers-1) // 2)])
         #self.jump = JumpingKnowledge(mode='cat')
         
@@ -401,59 +405,47 @@ class SAGPool_g(torch.nn.Module):
         self.conv1.reset_parameters()
         for conv in self.convs:
             conv.reset_parameters()
-        for pool in self.pools:
-            pool.reset_parameters()
+        self.pool.reset_parameters()
         self.lin1.reset_parameters()
         self.lin2.reset_parameters()
 
     def forward(self, data):
         x, edge_index, edge_attr, batch = data.x, data.edge_index, data.edge_attr, data.batch
-        '''
+        
         # 1. Obtain node embeddings
-        x = self.conv1(x, edge_index, edge_attr)
-        x = x.relu()
-        x = self.conv2(x, edge_index, edge_attr)
-        x = x.relu()
-        x = self.conv3(x, edge_index, edge_attr)
-
-        # 2. Readout layer
-        # x = global_mean_pool(x, batch)  # [batch_size, hidden_channels]
-        x = self.att(x, batch)
+        x = F.relu(self.conv1(x, edge_index, edge_attr))
         
-        x = self.lin1(x)
-        x = x.relu()
-
-        # 3. Apply a final classifier
-        x = F.dropout(x, p=0.5, training=self.training)
-        x = self.lin2(x)
-
-        '''
-        
-        x = F.relu(self.conv1(x=x, edge_index = edge_index))
-        #x = F.relu(self.conv1(x=x, edge_index = edge_index, edge_weight = edge_attr))
-        
-        xs = [global_mean_pool(x, batch)]
+        xs = [x]
+        #print(x.shape)
         for i, conv in enumerate(self.convs):
-            x = F.relu(conv(x=x, edge_index = edge_index))
-            #x = F.relu(conv(x=x, edge_index = edge_index, edge_weight = edge_attr))
-            xs += [global_mean_pool(x, batch)]
-            if i % 2 == 0 and i < len(self.convs) - 1:
-                pool = self.pools[i // 2]
-                x, edge_index, _, batch, _, _ = pool(x, edge_index,batch=batch)
-                #x, edge_index, edge_attr, batch, _, _ = pool(x, edge_index,edge_attr = edge_attr,batch=batch)
-                
-        x = self.jump(xs)
+            x = F.relu(conv(x=x, edge_index = edge_index, edge_weight = edge_attr))
+            xs += [x]
+        x = torch.cat(tuple(xs),-1)
+        #print(x.shape)
+        x, edge_index, edge_attr, batch, _, _ = self.pool(x, edge_index,edge_attr = edge_attr,batch=batch)
+        x =  global_mean_pool(x, batch)
+        
         x = F.relu(self.lin1(x))
+        #print(x.shape)
         x = F.dropout(x, p=0.5, training=self.training)
         x = self.lin2(x)
+        #print(x.shape)
         return F.log_softmax(x, dim=-1)
+        
+     
     
 class TimeDiffClassifier_sagpooling(pl.LightningModule):
     def __init__(self, hparams):
         super().__init__()
         self.hparams = hparams
-
+        '''
         self.model = SAGPool(num_layers = self.hparams['num_layers'], 
+                             hidden = self.hparams['hidden_channels'], 
+                             num_classes=self.hparams['num_classes'],
+                            num_node_features = self.hparams['num_node_features'],
+                            ratio = self.hparams['ratio'])
+                            '''
+        self.model = SAGPool_g(num_layers = self.hparams['num_layers'], 
                              hidden = self.hparams['hidden_channels'], 
                              num_classes=self.hparams['num_classes'],
                             num_node_features = self.hparams['num_node_features'],
