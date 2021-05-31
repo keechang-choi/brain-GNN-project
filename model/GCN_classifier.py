@@ -431,8 +431,34 @@ class SAGPool_g(torch.nn.Module):
         x = self.lin2(x)
         #print(x.shape)
         return F.log_softmax(x, dim=-1)
+    def get_att(self, data):
+        x, edge_index, edge_attr, batch = data.x, data.edge_index, data.edge_attr, data.batch
         
-     
+        # 1. Obtain node embeddings
+        x = F.relu(self.conv1(x, edge_index, edge_attr))
+        
+        xs = [x]
+        ps = []
+        ss = []
+        #print(x.shape)
+        for i, conv in enumerate(self.convs):
+            x = F.relu(conv(x=x, edge_index = edge_index, edge_weight = edge_attr))
+            xs += [x]
+        x = torch.cat(tuple(xs),-1)
+        #print(x.shape)
+        x, edge_index, edge_attr, batch,  perm, score = self.pool(x, edge_index,edge_attr = edge_attr,batch=batch)
+        
+        ps.append(perm)
+        ss.append(score)
+        x =  global_mean_pool(x, batch)
+        
+        x = F.relu(self.lin1(x))
+        #print(x.shape)
+        x = F.dropout(x, p=0.5, training=self.training)
+        x = self.lin2(x)
+        #print(x.shape)
+        #return F.log_softmax(x, dim=-1)   
+        return ps, ss
     
 class TimeDiffClassifier_sagpooling(pl.LightningModule):
     def __init__(self, hparams):
