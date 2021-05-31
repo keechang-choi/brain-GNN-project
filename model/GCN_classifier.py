@@ -302,14 +302,14 @@ class TimeDiffClassifier(pl.LightningModule):
 class SAGPool(torch.nn.Module):
     def __init__(self, num_layers, hidden, num_node_features, num_classes, ratio=0.8):
         super(SAGPool, self).__init__()
-        self.conv1 = GraphConv(num_node_features, hidden, aggr='mean')
-        #self.conv1 = GCNConv(num_node_features, hidden, add_self_loops=False)
+        #self.conv1 = GraphConv(num_node_features, hidden, aggr='mean')
+        self.conv1 = GCNConv(num_node_features, hidden, add_self_loops=False)
         
         self.convs = torch.nn.ModuleList()
         self.pools = torch.nn.ModuleList()
         self.convs.extend([
-            GraphConv(hidden, hidden, aggr='mean')
-            #GCNConv(hidden, hidden, add_self_loops=False)
+            #GraphConv(hidden, hidden, aggr='mean')
+            GCNConv(hidden, hidden, add_self_loops=False)
             
             for i in range(num_layers - 1)
         ])
@@ -330,18 +330,18 @@ class SAGPool(torch.nn.Module):
 
     def forward(self, data):
         x, edge_index, edge_attr, batch = data.x, data.edge_index, data.edge_attr, data.batch
-        x = F.relu(self.conv1(x=x, edge_index = edge_index))
-        #x = F.relu(self.conv1(x=x, edge_index = edge_index, edge_weight = edge_attr))
+        #x = F.relu(self.conv1(x=x, edge_index = edge_index))
+        x = F.relu(self.conv1(x=x, edge_index = edge_index, edge_weight = edge_attr))
         
         xs = [global_mean_pool(x, batch)]
         for i, conv in enumerate(self.convs):
-            x = F.relu(conv(x=x, edge_index = edge_index))
-            #x = F.relu(conv(x=x, edge_index = edge_index, edge_weight = edge_attr))
+            #x = F.relu(conv(x=x, edge_index = edge_index))
+            x = F.relu(conv(x=x, edge_index = edge_index, edge_weight = edge_attr))
             xs += [global_mean_pool(x, batch)]
             if i % 2 == 0 and i < len(self.convs) - 1:
                 pool = self.pools[i // 2]
-                x, edge_index, _, batch, _, _ = pool(x, edge_index,batch=batch)
-                #x, edge_index, edge_attr, batch, _, _ = pool(x, edge_index,edge_attr = edge_attr,batch=batch)
+                #x, edge_index, _, batch, _, _ = pool(x, edge_index,batch=batch)
+                x, edge_index, edge_attr, batch, _, _ = pool(x, edge_index,edge_attr = edge_attr,batch=batch)
                 
         x = self.jump(xs)
         x = F.relu(self.lin1(x))
@@ -351,20 +351,20 @@ class SAGPool(torch.nn.Module):
         return F.log_softmax(x, dim=-1)
     def get_att(self, data):
         x, edge_index, edge_attr, batch = data.x, data.edge_index, data.edge_attr, data.batch
-        x = F.relu(self.conv1(x=x, edge_index = edge_index))
-        #x = F.relu(self.conv1(x=x, edge_index = edge_index, edge_weight = edge_attr))
+        #x = F.relu(self.conv1(x=x, edge_index = edge_index))
+        x = F.relu(self.conv1(x=x, edge_index = edge_index, edge_weight = edge_attr))
         
         xs = [global_mean_pool(x, batch)]
         ps = []
         ss = []
         for i, conv in enumerate(self.convs):
-            x = F.relu(conv(x=x, edge_index = edge_index))
-            #x = F.relu(conv(x=x, edge_index = edge_index, edge_weight = edge_attr))
+            #x = F.relu(conv(x=x, edge_index = edge_index))
+            x = F.relu(conv(x=x, edge_index = edge_index, edge_weight = edge_attr))
             xs += [global_mean_pool(x, batch)]
             if i % 2 == 0 and i < len(self.convs) - 1:
                 pool = self.pools[i // 2]
-                x, edge_index, _, batch, perm, score = pool(x, edge_index,batch=batch)
-                #x, edge_index, edge_attr, batch, perm, score =  pool(x, edge_index,edge_attr = edge_attr, batch=batch)
+                #x, edge_index, _, batch, perm, score = pool(x, edge_index,batch=batch)
+                x, edge_index, edge_attr, batch, perm, score =  pool(x, edge_index,edge_attr = edge_attr, batch=batch)
                 
                 ps.append(perm)
                 ss.append(score)
@@ -464,7 +464,7 @@ class TimeDiffClassifier_sagpooling(pl.LightningModule):
     def __init__(self, hparams):
         super().__init__()
         self.hparams = hparams
-        '''
+        
         self.model = SAGPool(num_layers = self.hparams['num_layers'], 
                              hidden = self.hparams['hidden_channels'], 
                              num_classes=self.hparams['num_classes'],
@@ -476,7 +476,8 @@ class TimeDiffClassifier_sagpooling(pl.LightningModule):
                              num_classes=self.hparams['num_classes'],
                             num_node_features = self.hparams['num_node_features'],
                             ratio = self.hparams['ratio'])
-
+    '''
+            
     def edge2mat(self, edge_index, edge_attr, n=148):
         efn = edge_attr.shape[-1]
         mat = torch.zeros([n, n, efn])
