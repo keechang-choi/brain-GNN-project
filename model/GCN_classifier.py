@@ -470,13 +470,13 @@ class TimeDiffClassifier_sagpooling(pl.LightningModule):
                              num_classes=self.hparams['num_classes'],
                             num_node_features = self.hparams['num_node_features'],
                             ratio = self.hparams['ratio'])
-                            '''
+        '''
         self.model = SAGPool_g(num_layers = self.hparams['num_layers'], 
                              hidden = self.hparams['hidden_channels'], 
                              num_classes=self.hparams['num_classes'],
                             num_node_features = self.hparams['num_node_features'],
                             ratio = self.hparams['ratio'])
-    '''
+        '''
             
     def edge2mat(self, edge_index, edge_attr, n=148):
         efn = edge_attr.shape[-1]

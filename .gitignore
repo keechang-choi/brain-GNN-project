@@ -1,4 +1,8 @@
 GCN_classification.ipynb
 data/
 sparsification/data
+sparsification/data_50
+sparsification/data_05
+
+
 
