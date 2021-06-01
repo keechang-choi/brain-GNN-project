@@ -310,10 +310,8 @@ class SAGPool(torch.nn.Module):
         else:
             conv_layer = GCNConv
             conv_param = ({'add_self_loops':False})
-        if( not nonlinearity):
-            self.nonlinearity = torch.sigmoid
-        else:
-            self.nonlinearity = torch.tanh
+        
+        self.nonlinearity = nonlinearity
         #self.conv1 = GraphConv(num_node_features, hidden, aggr='mean')
         #self.conv1 = GCNConv(num_node_features, hidden, add_self_loops=False)
         self.conv1 = conv_layer(num_node_features, hidden, **conv_param)
