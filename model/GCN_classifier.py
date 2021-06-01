@@ -300,7 +300,7 @@ class TimeDiffClassifier(pl.LightningModule):
     
 
 class SAGPool(torch.nn.Module):
-    def __init__(self, num_layers, hidden, num_node_features, num_classes, ratio=0.8, min_score = None, use_weight = False):
+    def __init__(self, num_layers, hidden, num_node_features, num_classes, ratio=0.8, min_score = None, use_weight = False, nonlinearity = None):
         super(SAGPool, self).__init__()
         self.use_weight = use_weight
         
@@ -310,7 +310,10 @@ class SAGPool(torch.nn.Module):
         else:
             conv_layer = GCNConv
             conv_param = ({'add_self_loops':False})
-        
+        if( not nonlinearity):
+            self.nonlinearity = torch.sigmoid
+        else:
+            self.nonlinearity = torch.tanh
         #self.conv1 = GraphConv(num_node_features, hidden, aggr='mean')
         #self.conv1 = GCNConv(num_node_features, hidden, add_self_loops=False)
         self.conv1 = conv_layer(num_node_features, hidden, **conv_param)
@@ -325,7 +328,7 @@ class SAGPool(torch.nn.Module):
             for i in range(num_layers - 1)
         ])
         self.pools.extend(
-            [SAGPooling(hidden, ratio, min_score=min_score, GNN=conv_layer, **conv_param) for i in range((num_layers-1) // 2)])
+            [SAGPooling(hidden, ratio, min_score=min_score, GNN=conv_layer, nonlinearity = self.nonlinearity, **conv_param) for i in range((num_layers-1) // 2)])
         self.jump = JumpingKnowledge(mode='cat')
         self.lin1 = Linear(num_layers * hidden, hidden)
         self.lin2 = Linear(hidden, num_classes)
@@ -497,7 +500,8 @@ class TimeDiffClassifier_sagpooling(pl.LightningModule):
                             num_node_features = self.hparams['num_node_features'],
                             ratio = self.hparams['ratio'],
                             min_score = self.hparams['min_score'],
-                            use_weight = self.hparams['use_weight'])
+                            use_weight = self.hparams['use_weight'],
+                            nonlinearity = self.hparams['nonlinearity'])
         '''
         self.model = SAGPool_g(num_layers = self.hparams['num_layers'], 
                              hidden = self.hparams['hidden_channels'], 
