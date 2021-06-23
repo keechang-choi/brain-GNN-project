@@ -1,5 +1,17 @@
 # brain-GNN-project  
 
+## Report
+[과제연구21-1_최종보고서_20150751최기창.pdf](https://github.com/rlckd159/brain-GNN-project/files/6703237/21-1_._20150751.pdf)
+
+
+##  figure
+### Training Curve
+![data_95_diff_base](https://user-images.githubusercontent.com/49244613/123128162-df7a3880-d485-11eb-89bc-d4c3b5d87e1d.jpg)
+
+### Visualization 
+https://brainpainter.csail.mit.edu/
+![brain_painter_freq](https://user-images.githubusercontent.com/49244613/123128173-e1dc9280-d485-11eb-8233-2df97be70259.JPG)
+
 ## sparsification   
 
 ### Disparity Filtering  
